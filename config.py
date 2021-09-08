@@ -26,22 +26,28 @@ class Config(object):
 
     POSTS_PER_PAGE = 25
 
+    CACHING_TYPE = 'pickle'
+    CACHE_TIMEOUT = 86400
+    MEMSERVER = '127.0.0.1'
+    MEMPORT = 11211
+    MEMTIMEOUT = 0
+
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'APP_PRODUCTION_DATABASE_URI') or 'mysql://root:123456@127.0.0.1/test'
+        'APP_PRODUCTION_DATABASE_URI') or 'mysql://root:123456@127.0.0.1/centurytex'
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'APP_PRODUCTION_DATABASE_URI') or 'mysql://root:123456@127.0.0.1/test'
+        'APP_PRODUCTION_DATABASE_URI') or 'mysql://ubuntu:9930343106ASD@127.0.0.1:3306/centurytexlive'
 
 
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'APP_PRODUCTION_DATABASE_URI') or 'mysql://root:123456@127.0.0.1/test'
+        'APP_PRODUCTION_DATABASE_URI') or 'mysql://root:123456@127.0.0.1/centurytex'
 
 
 config_names = {
