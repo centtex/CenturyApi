@@ -26,8 +26,7 @@ class FirebaseAuthenticate:
 
         if user_id and type(user_id) is int:
             if len(str(user_id)) == 10 and user_id != 9999999999:
-                # res = [user for user in user_list if user['mobile'].strip() == str(user_id).strip()]
-                if [user for user in user_list if user['mobile'].strip() == str(user_id).strip()]:
+                if [user for user in user_list if user['mobile'].strip() == str(user_id).strip() and user['isActive']]:
                     return True
                 else:
                     return False
@@ -68,3 +67,6 @@ class FirebaseAuthenticate:
             return f(*args, **kwargs)
 
         return wrap
+
+
+# print(FirebaseAuthenticate.get_user_token(8160231082))

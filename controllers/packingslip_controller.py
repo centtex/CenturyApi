@@ -4,10 +4,13 @@ from sqlalchemy.sql import text
 from caching import CacheData
 from firebase_wrap import FirebaseAuthenticate
 from dateutil import parser
+from common.helper import Helper
+
 
 class PackingSlip:
     def __init__(self):
         self.cache = CacheData()
+        self.helper = Helper()
 
     def getPackingSlip(self, user_id):
         if request.method == 'POST':
@@ -70,22 +73,15 @@ class PackingSlip:
                         cached_data = [slip._asdict() for slip in packing_slip_data.all()]
                         self.cache.set_data('packingslip' + '-data', cached_data)
 
-                        # if request_data['user_id']:
-                        #     ids_ = ', '.join(str(u) for u in request_data['user_id'])
-                        #     sql_stmt += " AND PARTYID IN (%(userid)s) " % {"userid": ids_}
-                        # if request_data['agent_id']:
-                        #     sql_stmt += "AND AGENTID = %(agentid)s " % {"agentid": request_data['Agent_id']}
-                        # if request_data['packingslip_id']:
-                        #     sql_stmt += "AND PACKINGSLIPID = '%(packingslipid)s' " % {
-                        #         "packingslipid": request_data['packingslip_id']}
-                        # if request_data['from_date']:
-                        #     sql_stmt += "AND VDATE >= '%(fromdate)s' " % {"fromdate": request_data['from_date']}
-                        # if request_data['to_date']:
-                        #     sql_stmt += "AND VDATE <= '%(todate)s' " % {"todate": request_data['to_date']}
-
                     if request_data['user_id']:
-                        # ids_ = ', '.join(str(u) for u in request_data['user_id'])
-                        cached_data = [d for d in cached_data if d['PARTYID'] in request_data['user_id']]
+                        check = self.helper.check_if_user_id_exist(user_id, request_data['user_id'])
+                        if check:
+                            cached_data = [d for d in cached_data if d['PARTYID'] in request_data['user_id']]
+                        else:
+                            return Response(
+                                "User Is Not Authorized to access other user data",
+                                status=404,
+                            )
 
                     if request_data['agent_id']:
                         cached_data = [d for d in cached_data if d['AGENTID'] == request_data['agent_id']]
@@ -104,27 +100,20 @@ class PackingSlip:
                     page_number = request_data['pagenumber']
                     page_size = request_data['pagesize']
 
-                    start_index = 0
-
-                    if page_number >= 1 and page_size != 0 and page_size < len(cached_data):
-                        start_index = page_size * (page_number - 1)
-                        end_index = (page_size * page_number)
+                    if len(cached_data) < page_size and page_number > 1:
+                        return jsonify([])
                     else:
-                        end_index = len(cached_data)
+                        start_index = 0
+                        if page_number >= 1 and page_size != 0 and page_size < len(cached_data):
+                            start_index = page_size * (page_number - 1)
+                            end_index = (page_size * page_number)
+                        else:
+                            end_index = len(cached_data)
 
-                    return jsonify(cached_data[start_index:end_index])
+                        return jsonify(cached_data[start_index:end_index])
                 else:
-                    return Response(
-                        "Invalid Request Object",
-                        status=400,
-                    )
+                    return Response("Invalid Request Object", status=400)
             else:
-                return Response(
-                    "User Not Authorized",
-                    status=404,
-                )
+                return Response("User Not Authorized", status=404)
         else:
-            return Response(
-                "Invalid Request",
-                status=400,
-            )
+            return Response("Invalid Request", status=400)

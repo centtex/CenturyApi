@@ -1,15 +1,17 @@
 from flask import jsonify, request, Response
-from models import db
 from sqlalchemy.sql import text
 from caching import CacheData
 from firebase_wrap import FirebaseAuthenticate
 from dateutil import parser
+from models import db
+from common.helper import Helper
 
 
 class SalesOrder:
 
     def __init__(self):
         self.cache = CacheData()
+        self.helper = Helper()
 
     def getSalesOrderDetails(self, user_id):
         if request.method == 'POST':
@@ -24,7 +26,7 @@ class SalesOrder:
 
                     if cached_data is None:
                         sql_stmt = "SELECT O.*, Price_Name FROM(" \
-                                   "SELECT SO.AGENT_ID,SO.LGR_ID,SO.CMP_CODE,SO.ORDER_TYPE,SO.FLAG" \
+                                   "SELECT SO.AGENT_ID,SO.LGR_ID AS PARTYID,SO.CMP_CODE,SO.ORDER_TYPE,SO.FLAG" \
                                    ",SO.SAL_ORDER_ID,SO.CONFNO,SO.SALES_ORDERNO,SO.THROUGH,SO.VCH_DATE" \
                                    ",SO.ORDER_DATE,SO.START_DATE,SO.END_DATE,SO.Scheme,SO.SCHEME_PER,SO.Price_id" \
                                    ",LM.LGR_NAME AS PARTY,PCM.CITY_NAME AS PARTY_CITY, PCM.CITY_DISTRICT" \
@@ -52,7 +54,14 @@ class SalesOrder:
                         self.cache.set_data('sales_order' + '-data', cached_data)
 
                     if request_data['user_id']:
-                        cached_data = [d for d in cached_data if d['PARTYID'] in request_data['user_id']]
+                        check = self.helper.check_if_user_id_exist(user_id, request_data['user_id'])
+                        if check:
+                            cached_data = [d for d in cached_data if d['PARTYID'] in request_data['user_id']]
+                        else:
+                            return Response(
+                                "User Is Not Authorized to access other user data",
+                                status=404,
+                            )
 
                     if request_data['agent_id']:
                         cached_data = [d for d in cached_data if d['AGENTID'] == request_data['agent_id']]
@@ -70,26 +79,20 @@ class SalesOrder:
 
                     page_number = request_data['pagenumber']
                     page_size = request_data['pagesize']
-                    start_index = 0
-                    if page_number >= 1 and page_size != 0 and page_size < len(cached_data):
-                        start_index = page_size * (page_number - 1)
-                        end_index = (page_size * page_number)
+                    if len(cached_data) < page_size and page_number > 1:
+                        return jsonify([])
                     else:
-                        end_index = len(cached_data)
+                        start_index = 0
+                        if page_number >= 1 and page_size != 0 and page_size < len(cached_data):
+                            start_index = page_size * (page_number - 1)
+                            end_index = (page_size * page_number)
+                        else:
+                            end_index = len(cached_data)
 
-                    return jsonify(cached_data[start_index:end_index])
+                        return jsonify(cached_data[start_index:end_index])
                 else:
-                    return Response(
-                        "Invalid Request Object",
-                        status=400,
-                    )
+                    return Response("Invalid Request Object", status=400)
             else:
-                return Response(
-                    "User Not Authorized",
-                    status=404,
-                )
+                return Response("User Not Authorized", status=404)
         else:
-            return Response(
-                "Invalid Request",
-                status=400,
-            )
+            return Response("Invalid Request", status=400)
